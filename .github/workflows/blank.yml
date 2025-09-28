@@ -1,0 +1,47 @@
+name: Build Klipper Firmware
+
+on:
+  workflow_dispatch:   # Permite lanzarlo manualmente desde "Actions"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Klipper
+        uses: actions/checkout@v3
+        with:
+          repository: Klipper3d/klipper
+          path: klipper
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential gcc-arm-none-eabi libncurses-dev
+
+      - name: Prepare .config
+        run: |
+          cat > klipper/.config <<EOF
+          CONFIG_MCU="stm32"
+          CONFIG_MCU_STM32=y
+          CONFIG_MCU_STM32F103=y
+          CONFIG_MCU_STM32F103_RET6=y
+          CONFIG_STM32_CLOCK_REF_8MHZ=y
+          CONFIG_FLASH_START=0x7000
+          CONFIG_SERIAL=y
+          CONFIG_SERIAL_PORT=1
+          CONFIG_SERIAL_BAUD=250000
+          CONFIG_USB=n
+          CONFIG_CANBUS=n
+          EOF
+
+      - name: Build firmware
+        run: |
+          cd klipper
+          make -j$(nproc)
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v3
+        with:
+          name: firmware
+          path: klipper/out/klipper.bin
